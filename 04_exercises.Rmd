@@ -122,8 +122,9 @@ TwinCities <- get_stamenmap(
 ggmap(TwinCities) +
   geom_point(data=Starbucks, 
              aes(x=Longitude,y=Latitude), 
-             alpha=.4, size = .5,
-             color = "#00704A")
+             alpha=.4, size = 2,
+             color = "#00704A")+ 
+  labs(title = 'Starbucks at Twin Cities metro ares')
 ```
   
 
@@ -141,8 +142,9 @@ TwinCities_type2 <- get_stamenmap(
 ggmap(TwinCities_type2) +
   geom_point(data=Starbucks, 
              aes(x=Longitude,y=Latitude), 
-             alpha=.4, size = .5,
-             color = "#00704A")
+             alpha=.4, size = 2,
+             color = "#00704A") + 
+  labs(title = 'starbucks at twin cities metro area')
 ```
   
 
@@ -155,10 +157,15 @@ TwinCities<- get_stamenmap(
 
 ggmap(TwinCities) +
   annotate("text",
-           x = -93.15,
+           x = -93.1691,
            y = 44.96,
            color = 'blue',
-           label = 'Mac') 
+           label = 'Mac') + 
+  annotate('point',
+           x =  -93.1691,
+           y = 44.9379,
+           color = 'blue') +
+  labs(title = 'Mac at twin cities metro map')
   
 ```
   
@@ -181,37 +188,48 @@ starbucks_with_2018_pop_est <-
 ```
 
   6. **`dplyr` review**: Look through the code above and describe what each line of code does.
-
+  
+```{r,eval=FALSE}
 census_pop_est_2018 <- read_csv("data/us_census_2018_state_pop_est.csv") %>% 
-  # seperate the dot with statename from state variable
+  # seperate the dot with statename from state variable\\
   separate(state, into = c("dot","state"), extra = "merge") %>% 
-  # drop dot column
-  select(-dot) %>%
-  # make statename to be lowercase letters
+  # drop dot column\\
+  select(-dot) %>% 
+  # make statename to be lowercase letters\\  
   mutate(state = str_to_lower(state))
 
 starbucks_with_2018_pop_est <-
   starbucks_us_by_state %>% 
-  # join census_pop_est_2018 to starbucks_with_2018_pop_est
+  # join census_pop_est_2018 to starbucks_with_2018_pop_est\\
   left_join(census_pop_est_2018,
             by = c("state_name" = "state")) %>% 
-  # calcuate the number of starbucks per 10,000 people          
+  # calcuate the number of starbucks per 10,000 people\\          
   mutate(starbucks_per_10000 = (n/est_pop_2018)*10000)
-  
+```
+ 
+ 
   7. Create a choropleth map that shows the number of Starbucks per 10,000 people on a map of the US. Use a new fill color, add points for all Starbucks in the US (except Hawaii and Alaska), add an informative title for the plot, and include a caption that says who created the plot (you!). Make a conclusion about what you observe.
 ```{r}
 states_map <- map_data("state")
 
 starbucks_with_2018_pop_est %>% 
+  filter(state_name != "hawaii" & state_name != "alaska") %>% 
   ggplot() +
   geom_map(map = states_map,
            aes(map_id = state_name,
                fill = starbucks_per_10000)) +
+  geom_point(data = Starbucks %>% 
+               filter(Country == "US") %>% 
+               filter(`State/Province` != "HI" & `State/Province` != "AK"),
+             aes(x = Longitude, y = Latitude), color = 'yellow',size = 0.5) +
   #This assures the map looks decently nice:
   expand_limits(x = states_map$long, y = states_map$lat) + 
   theme_map() + 
-  labs(title = 'Number of Starbucks per 10,000 people')
+  labs(title = 'Number of Starbucks per 10,000 people',
+       caption = 'Created by Rita Liu')
 ```
+
+>Though there are a lot of starbucks stores in states along the eastern coast, the number of starbucks per 10000 people are lowerin those states. 
 
 ### A few of your favorite things (`leaflet`)
 
@@ -228,25 +246,26 @@ starbucks_with_2018_pop_est %>%
 favorite_stp_by_rita <- tibble(
   place = c( "Macalester College", "Mall of America", 
             "Nelson's", "riverside", 
-            "Le Pot Chinese Hotpot",'Santa Monica State Beach',
-            'Northfield','Virgina Beaach',
-            'Universal Studio','Mandarin Oriental Hotel'),
+            "Le Pot Chinese Hotpot",'Minnesota History Society',
+            'Northfield','Sencha Tea Bar',
+            'Stone Arch bridge','Kowalski'),
   long = c(-93.1712321, -93.24211951, 
            -93.1666616, -93.1985052,
-           -93.2349172,-118.5058768652949,
-           -93.161159,-75.9774183,
-           -118.35428374709448,-77.03101933577257),
+           -93.2349172,-93.10520025793963,
+           -93.161159,-93.1720388,
+           -93.25360837356979,-93.1533510702383),
   lat = c( 44.9378965, 44.8550204,
           44.9278204, 44.9417448, 
-          44.9819131,34.01731395,
-          44.4582041,36.8529841,
-          34.1391301,38.88341155),
+          44.9819131,44.9495208,
+          44.4582041,44.9399623,
+          44.9807356,44.940473850000004),
   top3 = c(TRUE,FALSE,
            FALSE,TRUE,
            FALSE,FALSE,
-           FALSE,FALSE,
-           TRUE,FALSE)
-  )
+           FALSE,TRUE,
+           FALSE,FALSE)
+  ) %>% 
+  arrange(place)
 
 pal <- colorFactor("viridis", 
                      domain = c(TRUE,FALSE)) 
@@ -258,12 +277,22 @@ leaflet(favorite_stp_by_rita) %>%
                    color = ~pal(top3),
                    fillOpacity = 0.5,
                    radius = 5,
-                   label =  ~paste(place)) %>% 
+                   label =  ~place,
+                   labelOptions = labelOptions(noHide = TRUE, 
+                                               textOnly = TRUE,
+                                               style = list('color' = 'blue',
+                                                            "font-size" = "10px")
+                                               )) %>% 
   addLegend(pal = pal, 
             values = ~top3, 
             opacity = 0.5, 
             title = 'Whether it is my favorite top3 places',
-            position = "bottomright") 
+            position = "bottomright") %>% 
+  addPolylines(lng = ~long, 
+               lat = ~lat,
+               color = 'red',
+               weight  = 1,
+               opacity = 1)
   
 ```
   
@@ -309,8 +338,8 @@ leaflet(tr) %>%
   addLegend(pal = pal, 
             values = ~n_dep, 
             opacity = 0.5, 
-            title = NULL,
-            position = "bottomright") 
+            title = 'Number of total departures',
+            position = "bottomright")
   
 ```
   
@@ -334,7 +363,7 @@ leaflet(casual_tr) %>%
   addLegend(pal = pal, 
             values = ~per_casual, 
             opacity = 1, 
-            title = NULL,
+            title = 'Proportion of casual users',
             position = "bottomright")   
 ```
   
@@ -357,9 +386,11 @@ covid19 %>%
            aes(map_id = state,
                fill = cases)) + 
   expand_limits(x = states_map$long, y = states_map$lat) + 
-  theme_map()
+  theme_map()+ 
+  labs(title = 'cumulative covid cases by state')
 ```
-  
+
+> Each state has different populations 
   
   12. Now add the population of each state to the dataset and color the states by most recent cumulative cases/10,000 people. See the code for doing this with the Starbucks data. You will need to make some modifications. 
 ```{r}
@@ -374,7 +405,8 @@ covid19 %>%
            aes(map_id = state,
                fill = cases_10000)) + 
   expand_limits(x = states_map$long, y = states_map$lat) + 
-  theme_map()
+  theme_map() + 
+  labs(title = 'cumulative cases per 10000 people by state')
 ```
   
   
@@ -462,6 +494,9 @@ leaflet(mpls_all) %>%
 > Nicollect Island has the lowest proportions of stops for suspicious while neighborhoods that locate at southern areas have higher proportions of stops for suspicious. 
 
   18. Use `leaflet` to create a map of your own choosing. Come up with a question you want to try to answer and use the map to help answer that question. Describe what your map shows. 
+  
+> Question: which region in Minneapolis has the highest percentage of foreign borns? 
+
 ```{r}
 pal <- colorNumeric("viridis", 
                      domain = mpls_all$foreignBorn) 
@@ -491,11 +526,13 @@ leaflet(mpls_all) %>%
             title = 'Proportion of foreign born',
             position = "bottomright") 
 ```
-  
+ 
+> It looks like Cedar riverside has the highest percent of foreign borns. My maps shows the foreign born rate of each neighborhood. A lighter color would suggest a higher rate of foreign borns. Regions in the center seems to have a higher foreign born rate in general, for Minneapolis. 
   
 ## GitHub link
 
   19. Below, provide a link to your GitHub page with this set of Weekly Exercises. Specifically, if the name of the file is 04_exercises.Rmd, provide a link to the 04_exercises.md file, which is the one that will be most readable on GitHub.
 
+[GitHub Page](https://github.com/RitaLiu6/Assignment4)
 
 **DID YOU REMEMBER TO UNCOMMENT THE OPTIONS AT THE TOP?**
